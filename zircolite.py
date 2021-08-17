@@ -20,6 +20,7 @@ from pathlib import Path
 import shutil
 from sys import platform as _platform
 import zlib
+import csv
 
 # External libs
 from tqdm import tqdm
@@ -258,7 +259,7 @@ class JSONFlattener:
 class zirCore:
     """ Load data into database and apply detection rules  """
 
-    def __init__(self, config, logger=None, noOutput=False, timeAfter="1970-01-01T00:00:00", timeBefore="9999-12-12T23:59:59"):
+    def __init__(self, config, logger=None, noOutput=False, timeAfter="1970-01-01T00:00:00", timeBefore="9999-12-12T23:59:59", csvMode=False):
         self.logger = logger or logging.getLogger(__name__)
         self.dbConnection = self.createConnection(":memory:")
         self.fullResults = []
@@ -267,6 +268,7 @@ class zirCore:
         self.timeAfter = timeAfter
         self.timeBefore = timeBefore
         self.config = config
+        self.csvMode = csvMode
     
     def close(self):
         self.dbConnection.close()
@@ -369,9 +371,11 @@ class zirCore:
                     rows = [dict(row) for row in data.fetchall()]
                     if len(rows) > 0:
                         counter += len(rows)
-                        # Cleaning null/None fields
                         for row in rows:
-                            match = {k: v for k, v in row.items() if v is not None}
+                            if self.csvMode: # Cleaning "annoying" values for CSV
+                                match = {k: str(v).replace("\n","").replace("\r","").replace("None","") for k, v in row.items()}
+                            else: # Cleaning null/None fields
+                                match = {k: v for k, v in row.items() if v is not None}
                             filteredRows.append(match)
             if "level" not in rule:
                 rule["level"] = "unknown"
@@ -402,10 +406,11 @@ class zirCore:
             self.ruleset = [rule for rule in self.ruleset if not any(ruleFilter in rule["title"] for ruleFilter in ruleFilters)]
 
     def executeRuleset(self, outFile, writeMode='w', forwarder=None, showAll=False, KeepResults=False, remote=None, stream=False):
+        csvWriter = None
         # Results are writen upon detection to allow analysis during execution and to avoid loosing results in case of error.
-        with open(outFile, writeMode, encoding='utf-8') as fileHandle:
+        with open(outFile, writeMode, encoding='utf-8', newline='') as fileHandle:
             with tqdm(self.ruleset, colour="yellow") as ruleBar:
-                if not self.noOutput: fileHandle.write('[')
+                if not self.noOutput and not self.csvMode: fileHandle.write('[')
                 for rule in ruleBar:  # for each rule in ruleset
                     if showAll and "title" in rule: ruleBar.write(f'{Fore.BLUE}    - {rule["title"]}')  # Print all rules
                     ruleResults = self.executeRule(rule)
@@ -414,14 +419,21 @@ class zirCore:
                         # Store results for templating and event forwarding (only if stream mode is disabled)
                         if KeepResults or (remote is not None and not stream): self.fullResults.append(ruleResults)
                         if stream and forwarder is not None: forwarder.send([ruleResults], False)
-                        # Output to json file
-                        try:
-                            if not self.noOutput: 
+                        # Output to json or csv file
+                        if self.csvMode: 
+                            if not csvWriter: # Creating the CSV header and the fields (agg is for queries with aggregation)
+                                csvWriter = csv.DictWriter(fileHandle, delimiter=';', fieldnames=["title", "description", "rule_level", "agg", "count"] + list(ruleResults["matches"][0].keys()))
+                                csvWriter.writeheader()
+                            for data in ruleResults["matches"]:
+                                dictCSV = { "title": ruleResults["title"], "description": ruleResults["description"], "rule_level": ruleResults["rule_level"], "count": ruleResults["count"], **data}                                        
+                                csvWriter.writerow(dictCSV)
+                        else:
+                            try:
                                 json.dump(ruleResults, fileHandle, indent=4, ensure_ascii=False)
                                 fileHandle.write(',\n')
-                        except Exception as e:
-                            self.logger.error(f"{Fore.RED}   [-] Error saving some results : {e}")
-                if not self.noOutput: fileHandle.write('{}]')  
+                            except Exception as e:
+                                self.logger.error(f"{Fore.RED}   [-] Error saving some results : {e}")
+                if not self.noOutput and not self.csvMode: fileHandle.write('{}]')  
 
     def run(self, EVTXJSONList):
         self.logger.info("[+] Processing EVTX")
@@ -588,6 +600,7 @@ if __name__ == '__main__':
     parser.add_argument("-R", "--rulefilter", help="Remove rule from ruleset, comparison is done on rule title (case sensitive)", action='append', nargs='*')
     parser.add_argument("-c", "--config", help="JSON File containing field mappings and exclusions", type=str, default="config/fieldMappings.json")
     parser.add_argument("-o", "--outfile", help="JSON file that will contains all detected events", type=str, default="detected_events.json")
+    parser.add_argument("--csv", help="The output will be in CSV. You should note that in this mode empty fields will not be discarded from results", action='store_true')
     parser.add_argument("-f", "--fileext", help="EVTX file extension", type=str, default="evtx")
     parser.add_argument("-t", "--tmpdir", help="Temp directory that will contains EVTX converted as JSON", type=str)
     parser.add_argument("-k", "--keeptmp", help="Do not remove the Temp directory", action='store_true')
@@ -641,10 +654,12 @@ if __name__ == '__main__':
      ███╔╝  ██║██╔══██╗██║     ██║   ██║██║     ██║   ██║   ██╔══╝
     ███████╗██║██║  ██║╚██████╗╚██████╔╝███████╗██║   ██║   ███████╗
     ╚══════╝╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝   ╚═╝   ╚══════╝
+             -= Standalone SIGMA Detection tool for EVTX =-
     """)
     #{% if embeddedMode %}#{{ embeddedText }}#{% endif %}
     #{% if embeddedMode %}
-    #{{ rulesCheck -}}
+    #{{ rulesCheck }}
+    #{{ noPackage }}
     #{% endif %}
 
     consoleLogger.info("[+] Checking prerequisites")
@@ -669,18 +684,23 @@ if __name__ == '__main__':
     # Checking templates args
     readyForTemplating = False
     if (args.template is not None):
+        if args.csv: quitOnError(f"{Fore.RED}   [-] You cannot use templates in CSV mode ")
         if (args.templateOutput is None) or (len(args.template) != len(args.templateOutput)):
             quitOnError(f"{Fore.RED}   [-] Number of template ouput must match number of template ")
         for template in args.template:
             checkIfExists(template[0], f"{Fore.RED}   [-] Cannot find template : {template[0]}")
         readyForTemplating = True
     #{% endif %}
+    if args.csv: 
+        readyForTemplating = False
+        if args.outfile == "detected_events.json": 
+            args.outfile = "detected_events.csv"
 
     # Start time counting
     start_time = time.time()
     
     # Initialize zirCore
-    zircoliteCore = zirCore(args.config, logger=consoleLogger, noOutput=args.nolog, timeAfter=eventsAfter, timeBefore=eventsBefore)
+    zircoliteCore = zirCore(args.config, logger=consoleLogger, noOutput=args.nolog, timeAfter=eventsAfter, timeBefore=eventsBefore, csvMode=args.csv)
 
     # If we are not working directly with the db
     if not args.dbonly:
@@ -740,8 +760,8 @@ if __name__ == '__main__':
     
     consoleLogger.info(f"[+] Executing ruleset - {len(zircoliteCore.ruleset)} rules")
     zircoliteCore.executeRuleset(args.outfile, forwarder=forwarder, showAll=args.showall, KeepResults=(readyForTemplating or args.package), remote=args.remote, stream=args.stream)
-    consoleLogger.info(f"[+] Results written in : {args.outfile}")      
-
+    consoleLogger.info(f"[+] Results written in : {args.outfile}")
+    
     # Forward events
     if args.remote is not None and not args.stream: # If not in stream mode
         consoleLogger.info(f"[+] Forwarding to : {args.remote}")
