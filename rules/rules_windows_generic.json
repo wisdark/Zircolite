@@ -534,19 +534,6 @@
         ]
     },
     {
-        "title": "Antivirus Relevant File Paths Alerts - 1EE95B6E",
-        "description": "Detects an Antivirus alert in a highly relevant file path or with a relevant file name",
-        "author": "Florian Roth, Arnim Rupp",
-        "level": "high",
-        "tags": [
-            "attack.resource_development",
-            "attack.t1588"
-        ],
-        "rule": [
-            "SELECT * FROM logs WHERE ((FileName LIKE \"C:\\\\Windows\\\\%\" ESCAPE '\\' OR FileName LIKE \"C:\\\\Temp\\\\%\" ESCAPE '\\' OR FileName LIKE \"C:\\\\PerfLogs\\\\%\" ESCAPE '\\' OR FileName LIKE \"C:\\\\Users\\\\Public\\\\%\" ESCAPE '\\' OR FileName LIKE \"C:\\\\Users\\\\Default\\\\%\" ESCAPE '\\') OR (FileName LIKE \"%\\\\Client\\\\%\" ESCAPE '\\' OR FileName LIKE \"%\\\\tsclient\\\\%\" ESCAPE '\\' OR FileName LIKE \"%\\\\inetpub\\\\%\" ESCAPE '\\' OR FileName LIKE \"%/www/%\" ESCAPE '\\' OR FileName LIKE \"%apache%\" ESCAPE '\\' OR FileName LIKE \"%tomcat%\" ESCAPE '\\' OR FileName LIKE \"%nginx%\" ESCAPE '\\' OR FileName LIKE \"%weblogic%\" ESCAPE '\\') OR (Filename LIKE \"%.ps1\" ESCAPE '\\' OR Filename LIKE \"%.psm1\" ESCAPE '\\' OR Filename LIKE \"%.vbs\" ESCAPE '\\' OR Filename LIKE \"%.bat\" ESCAPE '\\' OR Filename LIKE \"%.cmd\" ESCAPE '\\' OR Filename LIKE \"%.sh\" ESCAPE '\\' OR Filename LIKE \"%.chm\" ESCAPE '\\' OR Filename LIKE \"%.xml\" ESCAPE '\\' OR Filename LIKE \"%.txt\" ESCAPE '\\' OR Filename LIKE \"%.jsp\" ESCAPE '\\' OR Filename LIKE \"%.jspx\" ESCAPE '\\' OR Filename LIKE \"%.asp\" ESCAPE '\\' OR Filename LIKE \"%.aspx\" ESCAPE '\\' OR Filename LIKE \"%.ashx\" ESCAPE '\\' OR Filename LIKE \"%.asax\" ESCAPE '\\' OR Filename LIKE \"%.asmx\" ESCAPE '\\' OR Filename LIKE \"%.php\" ESCAPE '\\' OR Filename LIKE \"%.cfm\" ESCAPE '\\' OR Filename LIKE \"%.py\" ESCAPE '\\' OR Filename LIKE \"%.pyc\" ESCAPE '\\' OR Filename LIKE \"%.pl\" ESCAPE '\\' OR Filename LIKE \"%.rb\" ESCAPE '\\' OR Filename LIKE \"%.cgi\" ESCAPE '\\' OR Filename LIKE \"%.war\" ESCAPE '\\' OR Filename LIKE \"%.ear\" ESCAPE '\\' OR Filename LIKE \"%.hta\" ESCAPE '\\' OR Filename LIKE \"%.lnk\" ESCAPE '\\' OR Filename LIKE \"%.scf\" ESCAPE '\\' OR Filename LIKE \"%.sct\" ESCAPE '\\' OR Filename LIKE \"%.vbe\" ESCAPE '\\' OR Filename LIKE \"%.wsf\" ESCAPE '\\' OR Filename LIKE \"%.wsh\" ESCAPE '\\' OR Filename LIKE \"%.gif\" ESCAPE '\\' OR Filename LIKE \"%.png\" ESCAPE '\\' OR Filename LIKE \"%.jpg\" ESCAPE '\\' OR Filename LIKE \"%.jpeg\" ESCAPE '\\' OR Filename LIKE \"%.svg\" ESCAPE '\\' OR Filename LIKE \"%.dat\" ESCAPE '\\'))"
-        ]
-    },
-    {
         "title": "Antivirus Exploitation Framework Detection - FDF61EDF",
         "description": "Detects a highly relevant Antivirus alert that reports an exploitation framework",
         "author": "Florian Roth",
@@ -13415,21 +13402,6 @@
         ]
     },
     {
-        "title": "Notepad Making Network Connection - D6ADF703",
-        "description": "Detects suspicious network connection by Notepad",
-        "tags": [
-            "attack.command_and_control",
-            "attack.execution",
-            "attack.defense_evasion",
-            "attack.t1055"
-        ],
-        "author": "EagleEye Team",
-        "level": "high",
-        "rule": [
-            "SELECT * FROM logs WHERE (NewProcessName LIKE \"%\\\\notepad.exe\" ESCAPE '\\' AND NOT (DestinationPort = \"9100\"))"
-        ]
-    },
-    {
         "title": "Regsvr32 Network Activity - E09B640E",
         "description": "Detects network connections and DNS queries initiated by Regsvr32.exe",
         "tags": [
@@ -13504,21 +13476,6 @@
         "level": "medium",
         "rule": [
             "SELECT * FROM logs WHERE ((Initiated = \"true\" AND DestinationPort IN (\"4443\", \"2448\", \"8143\", \"1777\", \"1443\", \"243\", \"65535\", \"13506\", \"3360\", \"200\", \"198\", \"49180\", \"13507\", \"6625\", \"4444\", \"4438\", \"1904\", \"13505\", \"13504\", \"12102\", \"9631\", \"5445\", \"2443\", \"777\", \"13394\", \"13145\", \"12103\", \"5552\", \"3939\", \"3675\", \"666\", \"473\", \"5649\", \"4455\", \"4433\", \"1817\", \"100\", \"65520\", \"1960\", \"1515\", \"743\", \"700\", \"14154\", \"14103\", \"14102\", \"12322\", \"10101\", \"7210\", \"4040\", \"9943\")) AND NOT ((NewProcessName LIKE \"%\\\\Program Files%\" ESCAPE '\\' OR ((DestinationIp LIKE \"10.%\" ESCAPE '\\' OR DestinationIp LIKE \"192.168.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.16.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.17.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.18.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.19.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.20.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.21.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.22.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.23.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.24.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.25.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.26.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.27.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.28.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.29.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.30.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.31.%\" ESCAPE '\\' OR DestinationIp LIKE \"127.%\" ESCAPE '\\') AND DestinationIsIpv6 = \"false\"))))"
-        ]
-    },
-    {
-        "title": "Rundll32 Internet Connection - A0426506",
-        "description": "Detects a rundll32 that communicates with public IP addresses",
-        "author": "Florian Roth",
-        "tags": [
-            "attack.defense_evasion",
-            "attack.t1218.011",
-            "attack.t1085",
-            "attack.execution"
-        ],
-        "level": "medium",
-        "rule": [
-            "SELECT * FROM logs WHERE ((NewProcessName LIKE \"%\\\\rundll32.exe\" ESCAPE '\\' AND Initiated = \"true\") AND NOT ((DestinationIp LIKE \"10.%\" ESCAPE '\\' OR DestinationIp LIKE \"192.168.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.16.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.17.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.18.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.19.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.20.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.21.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.22.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.23.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.24.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.25.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.26.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.27.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.28.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.29.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.30.%\" ESCAPE '\\' OR DestinationIp LIKE \"172.31.%\" ESCAPE '\\' OR DestinationIp LIKE \"127.%\" ESCAPE '\\')))"
         ]
     },
     {

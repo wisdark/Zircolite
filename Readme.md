@@ -48,12 +48,26 @@ python3 zircolite.py --evtx <JSON_FOLDER/JSON_FILE> --ruleset rules/rules_window
 :information_source: If you want to try the tool you can test with these samples : 
 
 - [EVTX-ATTACK-SAMPLES](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES) (EVTX Files)
-- [MORDOR - APT29 Day 1](https://github.com/OTRF/mordor/blob/master/datasets/large/apt29/day1/apt29_evals_day1_manual.zip) (JSONL Files), [MORDOR - APT29 Day 2](https://github.com/OTRF/mordor/blob/master/datasets/large/apt29/day2/apt29_evals_day2_manual.zip) (JSONL Files)
-- [MORDOR - APT3 Scenario 1](https://github.com/OTRF/mordor/blob/master/datasets/large/windows/apt3/caldera_attack_evals_round1_day1_2019-10-20201108.tar.gz) (JSONL Files), [MORDOR - APT3 Scenario 2](https://github.com/OTRF/mordor/blob/master/datasets/large/windows/apt3/empire_apt3.tar.gz) (JSONL Files)
+- [MORDOR - APT29](https://github.com/OTRF/Security-Datasets/tree/master/datasets/compound/apt29) (JSONL Files)
+- [MORDOR - APT3](https://github.com/OTRF/Security-Datasets/tree/master/datasets/compound/windows/apt3) (JSONL Files)
 
 ## Docs
 
 Everything is [here](docs).
+
+## Tutorials, references and related projects
+
+### Tutorial
+
+[Russ McRee](https://holisticinfosec.io) has published a pretty good [tutorial](https://holisticinfosec.io/post/2021-09-28-zircolite/) on SIGMA and **Zircolite** in his [blog](https://holisticinfosec.io/post/2021-09-28-zircolite/).
+
+### EU ATT&CK Workshop October 2021
+
+[Florian Roth](https://github.com/Neo23x0/) cited **Zircolite** in his [**SIGMA Hall of fame**](https://github.com/Neo23x0/Talks/blob/master/Sigma_Hall_of_Fame_20211022.pdf) in its talk dugin the October 2021 EU ATT&CK Workshop.
+
+### Related projects
+
+[Michel de CREVOISIER](https://github.com/mdecrevoisier) is doing an amazing work with SIGMA, MITRE Att&ck (c) and other projects. Check [his work on mapping EVTX on the MITRE Att&ck (c) framework](https://github.com/mdecrevoisier/EVTX-to-MITRE-Attack).
 
 ## Mini-Gui
 
