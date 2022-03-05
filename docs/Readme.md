@@ -2,7 +2,7 @@
 
 ## Usage
 
-* [Requirements and Installation](#requirements-and-installation)
+* [Requirements and Installation](Usage.md#requirements-and-installation)
 * [Basic usage](Usage.md#basic-usage)
 * [Generate your own rulesets](Usage.md#generate-your-own-rulesets)
 	* [Why you should make your own rulesets](Usage.md#why-you-should-make-your-own-rulesets)
@@ -24,6 +24,7 @@
 * [Templating and Formatting](Advanced.md#templating-and-formatting)
 * [Mini GUI](Advanced.md#mini-gui)
 * [Packaging Zircolite](Advanced.md#packaging-zircolite)
+* [Using With DFIR Orc](Advanced.md#using-with-dfir-orc)
 
 ## Internals
 
