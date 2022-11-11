@@ -13,6 +13,7 @@
 * [Templating and Formatting](#templating-and-formatting)
 * [Mini GUI](#mini-gui)
 * [Packaging Zircolite](#packaging-zircolite)
+* [Using with DFIR Orc](#using-with-dfir-orc)
 
 ---
 
@@ -58,10 +59,6 @@ Except when `evtx_dump` is used, Zircolite only use one core. So if you have a l
 	
 	In this example the `-j -1` is for using all cores but one. You can adjust the number of used cores with this arguments.
 
-#### Using Zircolite MP 
-
-***deprecated***
-
 ---
 
 ### Filtering
@@ -77,7 +74,7 @@ To speed up the detection process, you may want to use Zircolite on files matchi
 - `-s` or `--select` : select files partly matching the provided a string (case insensitive)
 - `-a` or `--avoid` : exclude files partly matching the provided a string (case insensitive)
 
-:information_source: When using te two arguments, the "select" argument is always applied first and then the "avoid" argument is applied. So, it is possible to exclude files from included files but not the opposite.
+:information_source: When using the two arguments, the "select" argument is always applied first and then the "avoid" argument is applied. So, it is possible to exclude files from included files but not the opposite.
 
 - Only use EVTX files that contains "sysmon" in their names
 
@@ -162,7 +159,7 @@ Sometimes, SIGMA rules can be very noisy (and generate a lot of false positives)
 
 Zircolite provide 2 ways to forward events to a collector : 
 
-- the HTTP forwarder : this is a very simple forwarder and pretty much a "toy" example and should be used when you have nothing else. An **example** server called is available in the [tools](tools/) directory
+- the HTTP forwarder : this is a very simple forwarder and pretty much a "toy" example and should be used when you have nothing else. An **example** server called is available in the [tools](../tools/zircolite_server/) directory
 - the Splunk HEC Forwarder : it allows to forward all detected events to a Splunk instance using **HTTP Event Collector**.
 
 For now, the forwarders are not asynchronous so it can slow Zircolite execution. There are two modes to forward the events : 
@@ -172,17 +169,17 @@ For now, the forwarders are not asynchronous so it can slow Zircolite execution.
 
 If you forward your events to a central collector you can disable local logging with the Zircolite `--nolog` argument.
 
-#### Forward to a HTTP server
+#### Forward events to a HTTP server
 
-If you have multiple endpoints to scan, it is usefull to send the detected events to a central collector. As of v1.2, Zircolite can forward detected events to an HTTP server :
+If you have multiple endpoints to scan, it is useful to send the detected events to a central collector. As of v1.2, Zircolite can forward detected events to an HTTP server :
 
 ```shell
 python3 zircolite.py --evtx sample.evtx  --ruleset rules/rules_windows_sysmon.json \
 	--remote "http://address:port/uri"
 ```
-An **example** server called is available in the [tools](tools/) directory.
+An **example** server called is available in the [tools](../tools/zircolite_server/) directory.
 
-#### Forward to a Splunk instance via HEC
+#### Forward events to a Splunk instance via HEC
 
 As of v1.3.5, Zircolite can forward detections to a Splunk instance with Splunk **HTTP Event Collector**.
 
@@ -196,9 +193,29 @@ python3 zircolite.py --evtx /sample.evtx  --ruleset rules/rules_windows_sysmon.j
 
 :warning: On Windows do not forget to put quotes
 
+#### Forward to ELK
+
+As of version 2.8.0, Zircolite can forward events to an ELK stack using the ES client.
+
+```shell
+python3 zircolite.py --evtx /sample.evtx  --ruleset rules/rules_windows_sysmon.json \
+	--remote "https://x.x.x.x:8088" --index "zircolite-whatever" \
+	--eslogin "yourlogin" --espass "yourpass"
+```
+
+:information_source: the `--eslogin` and `--espass` arguments are optional.
+
+:warning: **Elastic is not handling logs the way Splunk does. Since Zircolite is flattening the field names in the JSON output some fields, especially when working with EVTX files, can have different types between Channels, logsources etc. So when Elastic uses automatic field mapping, mapping errors may prevent events insertion into Elastic.**
+
 #### No local logs
 
 When you forward detected events to an server, sometimes you don't want any log file left on the system you have run Zircolite on. It is possible with the `--nolog` option.
+
+### Forwarding all events 
+
+Zircolite is able to forward all events and not just the detected events to Splunk, ELK or a custom HTTP Server. you just to use the `--forwardall` argument. Please note that this ability forward events as JSON and not specific  `Windows` sourcetype.
+
+:warning: **Elastic is not handling logs the way Splunk does. Since Zircolite is flattening the field names in the JSON output some fields, especially when working with EVTX files, can have different types between Channels, logsources etc. So when Elastic uses automatic field mapping, mapping errors may prevent events insertion into Elastic.**
 
 ---
 

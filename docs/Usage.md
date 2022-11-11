@@ -46,20 +46,39 @@ It also works directly on an unique EVTX file.
 
 By default : 
 
+- `--ruleset` is not mandatory but the default ruleset will be `rules/rules_windows_generic.json`
 - Results are written in the `detected_events.json` in the same directory as Zircolite
 - There is a `zircolite.log`file that will be created in the current working directory
+
+#### Auditd logs : 
+
+```shell
+python3 zircolite.py --events auditd.log --ruleset rules/rules_linux.json --auditd
+```
+
+:information_source: `--events` and `--evtx` are stricly equivalent but `--events` is more logical to use for non EVTX logs.
+
+#### Sysmon for Linux logs : 
+
+Sysmon for linux has been released in October 2021. It outputs XML in text format with one event per-line. As of version 2.6.0, **Zircolite** has an *initial* support of Sysmon for Linux log files. To test it, just add `-S` to you command line : 
+
+```shell
+python3 zircolite.py --events sysmon.log --ruleset rules/rules_linux.json --sysmon4linux
+```
+
+:information_source: Since the logs come from Linux, the default file extension when using `-S` case is `.log`
 
 #### JSONL/NDJSON
 
 It is possible to use Zircolite directly on JSONL/NDJSON files (NXLog files) with the `--jsononly` or `-j` arguments : 
 
 ```shell
-python3 zircolite.py --evtx <EVTX_FOLDER> --ruleset <CONVERTED_SIGMA_RULES> --jsononly
+python3 zircolite.py --events <EVTX_FOLDER> --ruleset <CONVERTED_SIGMA_RULES> --jsononly
 ```
 
 A simple use case is when you have already run Zircolite and use the `--keeptmp` option. Since it keeps all the converted EVTX in a temp directory, if you need to re-execute Zircolite, you can do it directly using this directory as the EVTX source (with `--evtx <EVTX_IN_JSON_DIRECTORY>` and `--jsononly`) and avoid to convert the EVTX again.
 
-:information_source: If you you can change the file extension with `--fileext`.
+:information_source: You can change the file extension with `--fileext`.
 
 #### SQLite database files
 
@@ -69,17 +88,7 @@ Since everything in Zircolite is stored in a in-memory SQlite database, you can 
 python3 zircolite.py --evtx <EVTX_FOLDER> --ruleset <CONVERTED_SIGMA_RULES> --dbfile output.db
 ```
 
-If you need to re-execute Zircolite,  you can do it directly using the SQLite database as the EVTX source (with `--evtx <SAVED_SQLITE_DB_PATH>` and `--dbonly`) and avoid to convert the EVTX, post-process the EVTX and insert data to database. **Using this technique can save a lot of time...** 
-
-#### Sysmon for Linux XML log files
-
-Sysmon for linux has been released in October 2021. It outputs XML in text format with one event per-line. As of version 2.6.0, **Zircolite** has an *initial* support of Sysmon for Linux log files. To test it, just add `-S` to you command line : 
-
-```shell
-python3 zircolite.py --evtx <EVTX_FOLDER> --ruleset <CONVERTED_SIGMA_RULES> -S
-```
-
-:information_source: Since the logs come from Linux, the default file extension when using `-S` case is `.log`
+If you need to re-execute Zircolite,  you can do it directly using the SQLite database as the EVTX source (with `--evtx <SAVED_SQLITE_DB_PATH>` and `--dbonly`) and avoid to convert the EVTX, post-process the EVTX and insert data to database. **Using this technique can save a lot of time... But you will be unable to use the `--forwardall`option** 
 
 ---
 
@@ -87,46 +96,60 @@ python3 zircolite.py --evtx <EVTX_FOLDER> --ruleset <CONVERTED_SIGMA_RULES> -S
 
 Default rulesets are already provided in the `rules` directory. These rulesets only are the conversion of the rules located in [rules/windows](https://github.com/SigmaHQ/sigma/tree/master/rules/windows) directory of the Sigma repository. These rulesets are provided to use Zircolite out-of-the-box but [you should generate your own rulesets](#why-you-should-build-your-own-rulesets).
 
+**As of v2.9.5, Zircolite can auto-update its default rulesets using the `-U` or `--update-rules`. There is an auto-updated rulesets repository available [here](https://github.com/wagga40/Zircolite-Rules).**
+
 #### With sigmatools
 
-Zircolite use the SIGMA rules in JSON format. To generate your ruleset you need the official sigmatools (version 0.20 minimum) : 
+Zircolite use the SIGMA rules in JSON format. To generate your ruleset you need the official sigmatools (**version 0.21 minimum**) : 
 
 ```shell 
-pip install sigmatools
+git clone https://github.com/SigmaHQ/sigma.git
+cd sigma
 ```
-And then you can convert directories containing SIGMA rules : 
+**You must have the sigma dependencies installed, check [here](https://github.com/SigmaHQ/sigma#installation) :**
+
+##### Sysmon rulesets (when investigated endpoints have Sysmon logs)
 
 ```shell 
-sigmac -t sqlite -c config/generic/sysmon.yml \
-       -c config/generic/powershell.yml \
-       -c config/zircolite.yml \
-       -r sigma/rules/windows/ \
-       -d --backend-option table=logs \
-       --output-fields title,id,description,author,tags,level,falsepositives,filename \
-       --output-format json \
-       -o rules.json
-					  
+tools/sigmac \
+	-t sqlite \
+	-c tools/config/generic/sysmon.yml \
+	-c tools/config/generic/powershell.yml \
+	-c tools/config/zircolite.yml \
+	-d rules/windows/ \
+   --output-fields title,id,description,author,tags,level,falsepositives,filename,status \
+   --output-format json \
+   -r \
+   -o rules_sysmon.json \
+   --backend-option table=logs
 ```
+Where : 
 
-For an unique SIGMA rule convertion you just need to remove `-r` : 
+- `-t` is the backend type (SQlite) 
+- `-c` options are the backend configurations from the official repository
+- `-r` option is used to convert an entire directory (don't forget to remove if it is a single rule conversion)
+- `-o` option is used to provide the output filename 
+-  `--backend-option` is used to specify the SQLite table name (leave as is)
+
+##### Generic rulesets (when investigated endpoints _don't_ have Sysmon logs)
 
 ```shell 
-sigmac -t sqlite -c config/sysmon.yml \
-       -c config/generic/powershell.yml \
-       -c config/zircolite.yml \
-       sigma/rules/windows/builtin/win_net_use_admin_share.yml \
-       -d --backend-option table=logs \
-       --output-fields title,id,description,author,tags,level,falsepositives,filename \
-       --output-format json \
-       -o rules.json
-					  
+tools/sigmac \
+	-t sqlite \
+	-c tools/config/generic/windows-audit.yml \
+	-c tools/config/generic/powershell.yml \
+	-c tools/config/zircolite.yml \
+	-d rules/windows/ \
+   --output-fields title,id,description,author,tags,level,falsepositives,filename,status \
+   --output-format json \
+   -r \
+   -o rules_generic.json \
+   --backend-option table=logs
 ```
-
-Notice : `sysmon.yml`, `powershell.yml` and `zircolite.yml` are used to get correct EventID, Channel or Provider Name.
 
 #### On the fly rules conversion
 
-Since Zircolite 2.2.0, if you have sigmatools >= 0.20, Zircolite is able to convert the rules on-the-fly if you provide a SIGMA config file and the `sigmac` path. It is very convenient for testing but you should avoid it since this is slower : 
+Since Zircolite 2.2.0, if you have sigmatools >= 0.21, Zircolite is able to convert the rules on-the-fly if you provide a SIGMA config file and the `sigmac` path. It is very convenient for testing but you should avoid it since this is slower : 
 
 ```shell
 python3 zircolite.py --evtx ../Samples/EVTX-ATTACK-SAMPLES/ \
@@ -135,19 +158,6 @@ python3 zircolite.py --evtx ../Samples/EVTX-ATTACK-SAMPLES/ \
                      --sigmac <DIRECTORY>/sigmac
 ```
 In this case, as some rules are not supported by the SIGMA SQL/SQLite backends, it is possible to show which rule was not converted with the `--sigmaerrors` option.
-
-#### genRules (*DEPRECATED*)
-
-If you don't have a sigmatools version above or equal to 0.20, you can use the `genRules.py` script located in the repository [tools](../tools/genRules) directory.
-
-#### Update the default rulesets 
-
-If you have `Make` you can easily update default rulesets : 
-
-```shell
-make rulesets
-```
-It will generate new *generic* and *sysmon* rulesets at the root of the reposity.
 
 #### Why you should build your own rulesets
 
@@ -165,11 +175,8 @@ For example :
 
 ### Generate embedded versions
 
-If you deploy (manually or via GPO/SCCM) Zircolite directly on an endpoint you may want to have a binary that contains everything (rules, templates, tools, config etc.). As of 2.0, it is possible to generate your own embedded version of Zircolite with the **genEmbed** tool available in the repository [tools](../tools/genEmbed) directory
-
-#### Using genEmbed
-
-Please check help in the **genEmbed** repository : [tools/genEmbed](../tools/genEmbed).
+*Removed*.
+You can use DFIR Orc to package Zircolite, check [here](Advanced.md#using-with-dfir-orc).
 
 ---
 
