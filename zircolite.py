@@ -103,7 +103,7 @@ class templateEngine:
                 tpl.write(template.render(data=data, timeField=self.timeField))
         except Exception as e:
             self.logger.error(
-                f"{Fore.RED}   [-] Template error, activate debug mode to check for errors"
+                f"{Fore.RED}   [-] Template error, activate debug mode to check for errors{Fore.RESET}"
             )
             self.logger.debug(f"   [-] {e}")
 
@@ -212,7 +212,9 @@ class eventForwarder:
                     + timestamp.split(".")[1][:-1]
                 )
             except Exception as e:
-                self.logger.debug(f"{Fore.RED}   [-] Timestamp error: {timestamp}")
+                self.logger.debug(
+                    f"{Fore.RED}   [-] Timestamp error: {timestamp}{Fore.RESET}"
+                )
 
     def disableESDefaultLogging(self):
         """By Default Elastic client has a logger set to INFO level"""
@@ -301,7 +303,7 @@ class eventForwarder:
                             canInsert = True
                         else:
                             self.logger.debug(
-                                f"{Fore.RED}   [-] ES Mapping parser error : {e}"
+                                f"{Fore.RED}   [-] ES Mapping parser error : {e}{Fore.RESET}"
                             )
                         if canInsert:
                             try:
@@ -311,7 +313,9 @@ class eventForwarder:
                                     id=data["hash"],
                                 )
                             except Exception as e:
-                                self.logger.debug(f"{Fore.RED}   [-] ES error : {e}")
+                                self.logger.debug(
+                                    f"{Fore.RED}   [-] ES error : {e}{Fore.RESET}"
+                                )
                     elif e.body["error"]["type"] == "illegal_argument_exception":
                         errField = e.body["error"]["reason"].split("[")[1].split("]")[0]
                         data["payload"].pop(errField, None)  # remove value from payload
@@ -320,9 +324,13 @@ class eventForwarder:
                                 index=index, document=data["payload"], id=data["hash"]
                             )
                         except Exception as e:
-                            self.logger.debug(f"{Fore.RED}   [-] ES error : {e}")
+                            self.logger.debug(
+                                f"{Fore.RED}   [-] ES error : {e}{Fore.RESET}"
+                            )
                     else:
-                        self.logger.debug(f"{Fore.RED}   [-] ES error : {e}")
+                        self.logger.debug(
+                            f"{Fore.RED}   [-] ES error : {e}{Fore.RESET}"
+                        )
 
             queue.task_done()  # Notify Queue action ended
 
@@ -521,6 +529,7 @@ class JSONFlattener:
         timeAfter="1970-01-01T00:00:00",
         timeBefore="9999-12-12T23:59:59",
         timeField=None,
+        hashes=False,
     ):
         self.logger = logger or logging.getLogger(__name__)
         self.keyDict = {}
@@ -529,6 +538,7 @@ class JSONFlattener:
         self.timeAfter = timeAfter
         self.timeBefore = timeBefore
         self.timeField = timeField
+        self.hashes = hashes
 
         with open(configFile, "r", encoding="UTF-8") as fieldMappingsFile:
             self.fieldMappingsDict = json.loads(fieldMappingsFile.read())
@@ -589,6 +599,14 @@ class JSONFlattener:
                     try:
                         dictToFlatten = json.loads(line)
                         dictToFlatten.update({"OriginalLogfile": filename})
+                        if self.hashes:
+                            dictToFlatten.update(
+                                {
+                                    "OriginalLogLinexxHash": xxhash.xxh64_hexdigest(
+                                        line[:-1]
+                                    )
+                                }
+                            )
                         flatten(dictToFlatten)
                     except Exception as e:
                         self.logger.debug(f"JSON ERROR : {e}")
@@ -597,10 +615,13 @@ class JSONFlattener:
                         self.timeAfter != "1970-01-01T00:00:00"
                         or self.timeBefore != "9999-12-12T23:59:59"
                     ) and (self.timeField in JSONLine):
-                        timestamp = time.strptime(
-                            JSONLine[self.timeField].split(".")[0].replace("Z", ""),
-                            "%Y-%m-%dT%H:%M:%S",
-                        )
+                        try:
+                            timestamp = time.strptime(
+                                JSONLine[self.timeField].split(".")[0].replace("Z", ""),
+                                "%Y-%m-%dT%H:%M:%S",
+                            )
+                        except:
+                            JSONOutput.append(JSONLine)
                         if timestamp > self.timeAfter and timestamp < self.timeBefore:
                             JSONOutput.append(JSONLine)
                     else:
@@ -629,9 +650,11 @@ class zirCore:
         limit=-1,
         csvMode=False,
         timeField=None,
+        hashes=False,
+        dbLocation=":memory:",
     ):
         self.logger = logger or logging.getLogger(__name__)
-        self.dbConnection = self.createConnection(":memory:")
+        self.dbConnection = self.createConnection(dbLocation)
         self.fullResults = []
         self.ruleset = {}
         self.noOutput = noOutput
@@ -641,6 +664,7 @@ class zirCore:
         self.limit = limit
         self.csvMode = csvMode
         self.timeField = timeField
+        self.hashes = hashes
 
     def close(self):
         self.dbConnection.close()
@@ -674,7 +698,7 @@ class zirCore:
             " CREATE : " + createTableStmt.replace("\n", " ").replace("\r", "")
         )
         if not self.executeQuery(createTableStmt):
-            self.logger.error(f"{Fore.RED}   [-] Unable to create table")
+            self.logger.error(f"{Fore.RED}   [-] Unable to create table{Fore.RESET}")
             sys.exit(1)
 
     def createIndex(self):
@@ -693,7 +717,7 @@ class zirCore:
                 self.logger.debug(f"   [-] {e}")
                 return False
         else:
-            self.logger.error(f"{Fore.RED}   [-] No connection to Db")
+            self.logger.error(f"{Fore.RED}   [-] No connection to Db{Fore.RESET}")
             return False
 
     def executeSelectQuery(self, query):
@@ -708,7 +732,7 @@ class zirCore:
                 self.logger.debug(f"   [-] {e}")
                 return {}
         else:
-            self.logger.error(f"{Fore.RED}   [-] No connection to Db")
+            self.logger.error(f"{Fore.RED}   [-] No connection to Db{Fore.RESET}")
             return {}
 
     def loadDbInMemory(self, db):
@@ -928,18 +952,19 @@ class zirCore:
                                         fileHandle.write(",\n")
                                     except Exception as e:
                                         self.logger.error(
-                                            f"{Fore.RED}   [-] Error saving some results : {e}"
+                                            f"{Fore.RED}   [-] Error saving some results : {e}{Fore.RESET}"
                                         )
                 if not self.noOutput and not self.csvMode and lastRuleset:
                     fileHandle.write("{}]")  # Added to produce a valid JSON Array
 
     def run(self, EVTXJSONList, Insert2Db=True, forwarder=None):
-        self.logger.info("[+] Processing EVTX")
+        self.logger.info("[+] Processing events")
         flattener = JSONFlattener(
             configFile=self.config,
             timeAfter=self.timeAfter,
             timeBefore=self.timeBefore,
             timeField=self.timeField,
+            hashes=self.hashes,
         )
         flattener.runAll(EVTXJSONList)
         if Insert2Db:
@@ -969,7 +994,7 @@ class evtxExtractor:
         if Path(str(providedTmpDir)).is_dir():
             self.tmpDir = f"tmp-{self.randString()}"
             self.logger.error(
-                f"{Fore.RED}   [-] Provided directory already exists using '{self.tmpDir}' instead"
+                f"{Fore.RED}   [-] Provided directory already exists using '{self.tmpDir}' instead{Fore.RESET}"
             )
         else:
             self.tmpDir = providedTmpDir or f"tmp-{self.randString()}"
@@ -1030,7 +1055,7 @@ class evtxExtractor:
                         f'{json.dumps(json.loads(record["data"])).decode("utf-8")}\n'
                     )
         except Exception as e:
-            self.logger.error(f"{Fore.RED}   [-] {e}")
+            self.logger.error(f"{Fore.RED}   [-] {e}{Fore.RESET}")
 
     def getTime(self, line):
         timestamp = line.replace("msg=audit(", "").replace("):", "").split(":")
@@ -1044,7 +1069,10 @@ class evtxExtractor:
         Convert auditd logs to JSON : code from https://github.com/csark/audit2json
         """
         event = {}
-        attributes = auditdLine.split(" ")
+        # According to auditd specs https://github.com/linux-audit/audit-documentation/wiki/SPEC-Audit-Event-Enrichment
+        # a GS ASCII character, 0x1D, will be inserted to separate original and translated fields
+        # Best way to deal with it is to remove it.
+        attributes = auditdLine.replace("\x1d", " ").split(" ")
         for attribute in attributes:
             if "msg=audit" in attribute:
                 event["timestamp"] = self.getTime(attribute)
@@ -1081,7 +1109,7 @@ class evtxExtractor:
             return None
         xmlLine = "<Event>" + xmlLine.split("<Event>")[1]
         try:
-            # isolate invidvidual line parsing errors
+            # isolate individual line parsing errors
             root = etree.fromstring(xmlLine)
         except Exception as ex:
             self.logger.debug(f'unable to parse line "{xmlLine}": {ex}')
@@ -1148,7 +1176,7 @@ class evtxExtractor:
                     f"{self.tmpDir}/{str(filename)}-{self.randString()}.json",
                 )
             except Exception as e:
-                self.logger.error(f"{Fore.RED}   [-] {e}")
+                self.logger.error(f"{Fore.RED}   [-] {e}{Fore.RESET}")
         else:
             if not self.useExternalBinaries or not Path(self.evtxDumpCmd).is_file():
                 self.logger.debug(
@@ -1174,7 +1202,7 @@ class evtxExtractor:
                         cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
                     )
                 except Exception as e:
-                    self.logger.error(f"{Fore.RED}   [-] {e}")
+                    self.logger.error(f"{Fore.RED}   [-] {e}{Fore.RESET}")
 
     def cleanup(self):
         shutil.rmtree(self.tmpDir)
@@ -1348,13 +1376,13 @@ if __name__ == "__main__":
         "-e",
         "--evtx",
         "--events",
-        help="EVTX log file or directory where EVTX log files are stored in JSON or EVTX format",
+        help="Log file or directory where log files are stored in JSON, Auditd, Sysmon for Linux, or EVTX format",
         type=str,
     )
     parser.add_argument(
         "-s",
         "--select",
-        help="Only EVTX files containing the provided string will be used. If there is/are exclusion(s) (--avoid) they will be handled after selection",
+        help="Only files containing the provided string will be used. If there is/are exclusion(s) (--avoid) they will be handled after selection",
         action="append",
         nargs="+",
     )
@@ -1372,7 +1400,9 @@ if __name__ == "__main__":
         action="append",
         nargs="+",
     )
-    parser.add_argument("--fieldlist", help="Get all EVTX fields", action="store_true")
+    parser.add_argument(
+        "--fieldlist", help="Get all events fields", action="store_true"
+    )
     parser.add_argument(
         "--evtx_dump",
         help="Tell Zircolite to use this binary for EVTX conversion, on Linux and MacOS the path must be valid to launch the binary (eg. './evtx_dump' and not 'evtx_dump')",
@@ -1418,13 +1448,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "-t",
         "--tmpdir",
-        help="Temp directory that will contains EVTX converted as JSON (parent directories must exist)",
+        help="Temp directory that will contains events converted as JSON (parent directories must exist)",
         type=str,
     )
     parser.add_argument(
         "-k",
         "--keeptmp",
-        help="Do not remove the temp directory containing EVTX converted in JSON format",
+        help="Do not remove the temp directory containing events converted in JSON format",
         action="store_true",
     )
     parser.add_argument(
@@ -1504,6 +1534,11 @@ if __name__ == "__main__":
     )
     parser.add_argument("--forwardall", help="Forward all events", action="store_true")
     parser.add_argument(
+        "--hashes",
+        help="Add an xxhash64 of the orginal log event to each event",
+        action="store_true",
+    )
+    parser.add_argument(
         "--timefield",
         help="Provide time field name for event forwarding, default is 'SystemTime'",
         default="SystemTime",
@@ -1511,7 +1546,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--cores",
-        help="Specify how many cores you want to use, default is all cores",
+        help="Specify how many cores you want to use, default is all cores, works only for EVTX extraction",
         type=str,
     )
     parser.add_argument(
@@ -1540,8 +1575,20 @@ if __name__ == "__main__":
         action="store_true",
     )
     parser.add_argument(
+        "--ondiskdb",
+        help="Use an on-disk database instead of the in-memory one (much slower !). Use if your system has limited RAM or if your dataset is very large and you cannot split it.",
+        type=str,
+        default=":memory:",
+    )
+    parser.add_argument(
         "--package",
         help="Create a ZircoGui package (not available in embedded mode)",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-RE",
+        "--remove-events",
+        help="Zircolite will try to remove events/logs submitted if analysis is successful (use at your own risk)",
         action="store_true",
     )
     parser.add_argument(
@@ -1594,7 +1641,7 @@ if __name__ == "__main__":
     # Check mandatory CLI options
     if not args.evtx:
         consoleLogger.error(
-            f"{Fore.RED}   [-] No EVTX source path provided{Fore.RESET}"
+            f"{Fore.RED}   [-] No events source path provided{Fore.RESET}"
         ), sys.exit(2)
     if args.sysmon4linux and args.auditd:
         consoleLogger.error(
@@ -1624,7 +1671,7 @@ if __name__ == "__main__":
     if args.remote is not None:
         if not forwarder.networkCheck():
             quitOnError(
-                f"{Fore.RED}   [-] Remote host cannot be reached : {args.remote}"
+                f"{Fore.RED}   [-] Remote host cannot be reached : {args.remote}{Fore.RESET}"
             )
 
     # Checking provided timestamps
@@ -1640,28 +1687,38 @@ if __name__ == "__main__":
 
     # Check ruleset arg
     for ruleset in args.ruleset:
-        checkIfExists(ruleset, f"{Fore.RED}   [-] Cannot find ruleset : {ruleset}")
+        checkIfExists(
+            ruleset, f"{Fore.RED}   [-] Cannot find ruleset : {ruleset}{Fore.RESET}"
+        )
     # Check templates args
     readyForTemplating = False
     if args.template is not None:
         if args.csv:
-            quitOnError(f"{Fore.RED}   [-] You cannot use templates in CSV mode")
+            quitOnError(
+                f"{Fore.RED}   [-] You cannot use templates in CSV mode{Fore.RESET}"
+            )
         if (args.templateOutput is None) or (
             len(args.template) != len(args.templateOutput)
         ):
             quitOnError(
-                f"{Fore.RED}   [-] Number of templates output must match number of templates"
+                f"{Fore.RED}   [-] Number of templates output must match number of templates{Fore.RESET}"
             )
         for template in args.template:
             checkIfExists(
-                template[0], f"{Fore.RED}   [-] Cannot find template : {template[0]}"
+                template[0],
+                f"{Fore.RED}   [-] Cannot find template : {template[0]}{Fore.RESET}",
             )
         readyForTemplating = True
 
+    # Change output filename in CSV mode
     if args.csv:
         readyForTemplating = False
         if args.outfile == "detected_events.json":
             args.outfile = "detected_events.csv"
+
+    # If on-disk DB already exists, quit.
+    if args.ondiskdb != ":memory:" and (Path(args.ondiskdb).is_file()):
+        quitOnError(f"{Fore.RED}   [-] On-disk database already exists{Fore.RESET}")
 
     # Start time counting
     start_time = time.time()
@@ -1676,6 +1733,8 @@ if __name__ == "__main__":
         limit=args.limit,
         csvMode=args.csv,
         timeField=args.timefield,
+        hashes=args.hashes,
+        dbLocation=args.ondiskdb,
     )
 
     # If we are not working directly with the db
@@ -1693,13 +1752,15 @@ if __name__ == "__main__":
         elif EVTXPath.is_file():
             EVTXList = [EVTXPath]
         else:
-            quitOnError(f"{Fore.RED}   [-] Unable to find EVTX from submitted path")
+            quitOnError(
+                f"{Fore.RED}   [-] Unable to find events from submitted path{Fore.RESET}"
+            )
 
         # Applying file filters in this order : "select" than "avoid"
         FileList = avoidFiles(selectFiles(EVTXList, args.select), args.avoid)
         if len(FileList) <= 0:
             quitOnError(
-                f"{Fore.RED}   [-] No file found. Please verify filters, the directory or the extension with '--fileext'"
+                f"{Fore.RED}   [-] No file found. Please verify filters, the directory or the extension with '--fileext'{Fore.RESET}"
             )
 
         if not args.jsononly:
@@ -1715,7 +1776,7 @@ if __name__ == "__main__":
                 encoding=args.logs_encoding,
             )
             consoleLogger.info(
-                f"[+] Extracting EVTX Using '{extractor.tmpDir}' directory "
+                f"[+] Extracting events Using '{extractor.tmpDir}' directory "
             )
             for evtx in tqdm(FileList, colour="yellow"):
                 extractor.run(evtx)
@@ -1724,9 +1785,11 @@ if __name__ == "__main__":
         else:
             EVTXJSONList = FileList
 
-        checkIfExists(args.config, f"{Fore.RED}   [-] Cannot find mapping file")
+        checkIfExists(
+            args.config, f"{Fore.RED}   [-] Cannot find mapping file{Fore.RESET}"
+        )
         if EVTXJSONList == []:
-            quitOnError(f"{Fore.RED}   [-] No JSON files found.")
+            quitOnError(f"{Fore.RED}   [-] No JSON files found.{Fore.RESET}")
 
         # Print field list and exit
         if args.fieldlist:
@@ -1810,14 +1873,26 @@ if __name__ == "__main__":
             )
             packager.generate(zircoliteCore.fullResults)
 
-    # Removing Working directory containing logs as json
+    # Remove working directory containing logs as json
     if not args.keeptmp:
         consoleLogger.info("[+] Cleaning")
         try:
             if not args.jsononly and not args.dbonly:
                 extractor.cleanup()
         except OSError as e:
-            consoleLogger.error(f"{Fore.RED}   [-] Error during cleanup {e}")
+            consoleLogger.error(
+                f"{Fore.RED}   [-] Error during cleanup {e}{Fore.RESET}"
+            )
+
+    # Remove files submitted for analysis
+    if args.remove_events:
+        for EVTX in EVTXList:
+            try:
+                os.remove(EVTX)
+            except OSError as e:
+                consoleLogger.error(
+                    f"{Fore.RED}   [-] Cannot remove files {e}{Fore.RESET}"
+                )
 
     zircoliteCore.close()
     consoleLogger.info(f"\nFinished in {int((time.time() - start_time))} seconds")
